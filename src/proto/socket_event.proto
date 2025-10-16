@@ -1,0 +1,31 @@
+syntax ="proto3";
+
+
+package SocketEvent;
+
+message NewMessage{
+  optional string content = 1;  
+  optional string gif = 2;   
+}
+
+message NewCall{
+  string otherUserCode = 1;  
+  string callerName = 2;   
+}
+
+message NewMessageRespond{
+  string conversation_id = 1;
+  optional string content = 2;  
+  optional string gif = 3;   
+  string direct_from = 4;
+  string type = 5;
+  string _id = 6;
+}
+
+message SocketEventRequest{
+  string event = 1;
+  oneof data {
+    NewMessage new_message = 2;
+    NewCall new_call = 3;
+  }
+}

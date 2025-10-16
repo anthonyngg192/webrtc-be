@@ -1,0 +1,71 @@
+[package]
+name = "rust-signaling"
+version = "0.1.0"
+edition = "2021"
+authors = ["anthony"]
+
+[dependencies]
+
+# Actix
+actix = "0.13.5"
+actix-broker = "0.4.3"
+actix-web = "4.9.0"
+actix-web-actors = "4.3.1"
+actix-cors = "0.7.0"
+
+# env
+dotenv = "0.15.0"
+
+# logger
+env_logger = "0.11.6"
+log = "0.4.22"
+
+once_cell = "1.20.2"
+rand = "0.8.5"
+
+# Serde
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+
+# Time
+chrono = "0.4.38"
+
+# Jwt
+jsonwebtoken = "9.3.0"
+base64 = "0.22.1"
+
+# mongo
+mongodb = { version = "3.1.1" }
+
+# encode - decode
+secrecy = { version = "0.8.0", features = ["serde"] }
+
+# Caching
+redis = { version = "0.27.6" }
+deadpool-redis = "0.18.0"
+
+# utils
+schemars = "0.8.21"
+derive_more = "0.99.7"
+validator = "0.19.0"
+futures-util = "0.3.31"
+async-trait = "0.1.83"
+nanoid = "0.4.0"
+bcrypt = "0.17.0"
+
+# Protobuf
+prost = "0.13.4"
+prost-types = "0.11"
+
+# Kafka
+# rdkafka = "0.37.0"
+mediasoup = "0.18"
+prometheus = "0.13.4"
+tokio = "1.43.0"
+whisper-rs = "0.14.2"
+opus = "0.3.0"
+rubato = "0.16.2"
+
+[build-dependencies]
+prost-build = "0.13.4"
+tonic-build = "0.5.0"
