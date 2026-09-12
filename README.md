@@ -119,12 +119,21 @@ Do not install the Node.js `mediasoup` server package for this backend. Cargo bu
 
 ### Backend build prerequisites
 
+This sample follows the upstream [mediasoup v3 installation requirements](https://mediasoup.org/documentation/v3/mediasoup/installation/) for building its C/C++ worker.
+
+#### All platforms
+
 Install these before the first `cargo build` or `cargo run`:
 
+- Node.js `>= 22.0.0`.
+- Python `>= 3.10` with pip.
 - A Rust toolchain with Cargo.
-- Python 3 with `pip` available as `python3` and `python3 -m pip`.
 - A C/C++ toolchain with C++17 support.
 - Internet access during the first build so Cargo, Python, and native worker dependencies can be resolved.
+
+Upstream mediasoup only needs Python when a prebuilt worker cannot be downloaded. This Rust project uses `mediasoup-sys`, which builds its bundled native worker during the Cargo build, so Python and pip should be treated as required here.
+
+#### macOS
 
 On macOS, install the Xcode Command Line Tools:
 
@@ -132,16 +141,45 @@ On macOS, install the Xcode Command Line Tools:
 xcode-select --install
 ```
 
-On Debian or Ubuntu:
+Install current Node.js and Python versions with your preferred version manager or package manager, then confirm that Node.js is at least v22 and Python is at least 3.10.
+
+#### Debian or Ubuntu
 
 ```bash
 sudo apt update
 sudo apt install -y build-essential python3 python3-pip
 ```
 
+Install Node.js 22 or newer separately if the distribution package does not provide it.
+
+#### Red Hat, CentOS, or Fedora
+
+Install Node.js 22+, Python 3.10+ with pip, and the platform's C/C++ development tools. For YUM-based systems, mediasoup recommends:
+
+```bash
+sudo yum groupinstall "Development Tools"
+```
+
+#### Alpine Linux
+
+Alpine additionally requires `linux-headers` for the native C++ dependencies:
+
+```bash
+apk add build-base linux-headers python3 py3-pip nodejs
+```
+
+Confirm that the installed Alpine packages satisfy the minimum Node.js and Python versions above.
+
+#### Windows
+
+Use a Microsoft Visual Studio development environment with the MSVC C++ toolchain and C++17 support. Install Node.js 22+ and Python 3.10+ with pip. If the build resolves Python to a Microsoft Store app alias instead of the installed interpreter, disable the Python entries under **App execution aliases**.
+
+#### Verify the toolchain
+
 Verify the required commands before building:
 
 ```bash
+node --version
 rustc --version
 cargo --version
 python3 --version
@@ -197,14 +235,7 @@ The `RTC_MIN_PORT` and `RTC_MAX_PORT` variables document the intended range, but
 
 ### Frontend pre-setup
 
-The browser side does not compile a mediasoup worker. It only needs the JavaScript client installed by the frontend workspace:
-
-```bash
-# Run from this backend repository. Skip clone if ../fe already exists.
-git clone https://github.com/anthonyngg192/webrtc-fe.git ../fe
-cd ../fe
-pnpm install
-```
+The browser side does not compile a mediasoup worker. Running `pnpm i` in the frontend repository installs `mediasoup-client` together with the rest of the workspace dependencies.
 
 Set the frontend API and native WebSocket URLs:
 
@@ -258,15 +289,11 @@ The backend starts at `http://127.0.0.1:8000`.
 
 ### 3. Start the companion frontend
 
-In a second terminal:
+Open the [frontend repository](https://github.com/anthonyngg192/webrtc-fe) in a second terminal. From its repository root, run:
 
 ```bash
-# Clone this first if ../fe does not exist:
-# git clone https://github.com/anthonyngg192/webrtc-fe.git ../fe
-cd ../fe
-cp apps/forum-ui/.env.sample apps/forum-ui/.env
-pnpm install
-pnpm fe
+pnpm i
+pnpm ui
 ```
 
 The Vite development server starts at `http://localhost:5201`.
