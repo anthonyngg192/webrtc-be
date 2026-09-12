@@ -10,7 +10,7 @@ use serde::Deserialize;
 use serde_json::json;
 
 use crate::{
-    actors::room_management::{actors::RoomManager, messages::RoomManagementCreateRoom},
+    actors::room_management::{actors::RoomsActor, messages::RoomManagementCreateRoom},
     core::state::SharedState,
     middlewares::auth_guard::AuthGuard,
     models::{
@@ -48,7 +48,7 @@ pub async fn create_room(
 
     match res {
         Some(room_info) => {
-            let _ = RoomManager::from_registry()
+            let _ = RoomsActor::from_registry()
                 .send(RoomManagementCreateRoom {
                     room_code: RoomCode(room_info.code.clone()),
                     owner_code: room_info.owner_code.clone(),

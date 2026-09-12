@@ -1,5 +1,8 @@
 use crate::{
-    actors::{room_session::messages::*, session::messages::SendMessage},
+    actors::{
+        room_session::{actor::RoomActor, messages::*},
+        session::messages::SendMessage,
+    },
     models::{
         peer_session::ParticipantId,
         room_session::{RoomCode, RoomSession},
@@ -14,10 +17,7 @@ use std::{
     sync::Arc,
 };
 
-use super::{
-    metrics_service::{self, remove_label_consumer_only, remove_label_producer_only},
-    room_service::RoomService,
-};
+use super::room_service::RoomService;
 
 #[derive(Clone)]
 pub struct NewTransport {
@@ -55,7 +55,7 @@ impl RoomSession {
             .await
             .map_err(|error| format!("Failed to create router: {error}"))?;
 
-        println!("Room {} created", code.0.clone());
+        log::info!("Room {} created", code.0.clone());
 
         Ok(Self {
             owner_code,
@@ -146,7 +146,7 @@ impl RoomSession {
         None
     }
 
-    pub async fn new_transport(&mut self, peer: ParticipantId, room_addr: Addr<RoomSession>) {
+    pub async fn new_transport(&mut self, peer: ParticipantId, room_addr: Addr<RoomActor>) {
         let webrtc_server = self.webrtc_server.as_ref().clone();
         let transport_options = WebRtcTransportOptions::new_with_server(webrtc_server);
 
@@ -258,30 +258,14 @@ impl RoomSession {
             let producer_ids = producer.into_iter().collect::<Vec<ProducerId>>();
 
             for producer_id in producer_ids {
-                let producer = self.peer_producers.remove(&producer_id);
-                if producer.is_some() {
-                    let producer = producer.unwrap();
-                    remove_label_producer_only(
-                        self.code.0.as_str(),
-                        &producer_id,
-                        &producer.kind(),
-                    );
-                }
+                let _ = self.peer_producers.remove(&producer_id);
             }
         }
         let consumers = self.consumers.remove(&peer);
         if consumers.is_some() {
             let consumer_ids = consumers.unwrap().into_iter().collect::<Vec<ConsumerId>>();
             for consumer_id in consumer_ids {
-                let consumer = self.peer_consumers.remove(&consumer_id);
-                if consumer.is_some() {
-                    let consumer = consumer.unwrap();
-                    remove_label_consumer_only(
-                        self.code.0.as_str(),
-                        consumer.producer_id().to_string().as_str(),
-                        &consumer_id,
-                    );
-                }
+                let _ = self.peer_consumers.remove(&consumer_id);
             }
         }
     }
@@ -314,16 +298,8 @@ impl RoomSession {
         ActionResult::Failed
     }
 
-    pub async fn room_metrics(&self) {
-        let consumers: Vec<Arc<Consumer>> = self.peer_consumers.values().cloned().collect();
-        let producers: Vec<Arc<Producer>> = self.peer_producers.values().cloned().collect();
-
-        metrics_service::process_consumer_metrics(&self.code.0, consumers).await;
-        metrics_service::process_producer_metrics(&self.code.0, producers).await;
-    }
-
     //TODO: enable srtp - security realtime transport protocol.
-    pub async fn create_plain_transport(&mut self, room_addr: Addr<RoomSession>) {
+    pub async fn create_plain_transport(&mut self, room_addr: Addr<RoomActor>) {
         let plain_trans = self
             .router
             .create_plain_transport(PlainTransportOptions::new(ListenInfo {
@@ -337,7 +313,7 @@ impl RoomSession {
                 recv_buffer_size: None,
             }))
             .await
-            .expect("error incase create plain transport");
+            .expect("error in case create plain transport");
 
         //TODO. Remove.
         // let remote_ip = "127.0.0.1".to_string();

@@ -1,9 +1,6 @@
 use crate::{
     actors::session::actor::Session,
-    models::{
-        peer_session::ParticipantId,
-        room_session::{RoomCode, RoomSession},
-    },
+    models::{peer_session::ParticipantId, room_session::RoomCode},
 };
 use actix::{Addr, Message};
 use mediasoup::{
@@ -68,10 +65,6 @@ pub struct CreateProducer {
     pub kind: MediaKind,
     pub rtp_parameter: RtpParameters,
 }
-
-#[derive(Message)]
-#[rtype(result = "Option<RoomSession>")]
-pub struct GetRoom {}
 
 #[derive(Message)]
 #[rtype(result = "()")]

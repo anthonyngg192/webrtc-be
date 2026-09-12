@@ -6,30 +6,29 @@ use std::time::Instant;
 
 use crate::{
     actors::{
-        chat::actor::Chat,
-        peer::messages::{NewPeer, PeerDisconnect},
-        room_session::messages::PeerLeaveRoomSession,
+        chat::actor::ChatActor,
+        peer::{
+            actor::PeerActor,
+            messages::{NewPeer, PeerDisconnect},
+        },
+        room_session::{actor::RoomActor, messages::PeerLeaveRoomSession},
     },
-    models::{
-        peer_session::{ParticipantId, ParticipantType},
-        room_session::RoomSession,
-    },
-    services::peer_service::PeerService,
+    models::peer_session::{ParticipantId, ParticipantType},
     utils::generate::generate_string,
 };
 
 #[derive(Clone)]
 pub struct Session {
     pub participant_id: ParticipantId,
-    pub room_addr: Option<Addr<RoomSession>>,
+    pub room_addr: Option<Addr<RoomActor>>,
     pub rtp_capabilities: Option<RtpCapabilities>,
-    pub chat_addr: Arc<Addr<Chat>>,
+    pub chat_addr: Arc<Addr<ChatActor>>,
     pub name: String,
     pub hb: Instant,
 }
 
 impl Session {
-    pub fn new(user_code: String, name: String, chat_addr: Arc<Addr<Chat>>) -> Self {
+    pub fn new(user_code: String, name: String, chat_addr: Arc<Addr<ChatActor>>) -> Self {
         let pid = generate_string();
         let participant_id = ParticipantId {
             user_code,
@@ -53,7 +52,7 @@ impl Actor for Session {
 
     fn stopped(&mut self, _: &mut Self::Context) {
         log::info!("Session disconnected");
-        PeerService::from_registry().do_send(PeerDisconnect {
+        PeerActor::from_registry().do_send(PeerDisconnect {
             participant_id: self.participant_id.clone(),
         });
 
@@ -67,7 +66,7 @@ impl Actor for Session {
 
     fn started(&mut self, ctx: &mut Self::Context) {
         log::info!("new session connect");
-        PeerService::from_registry().do_send(NewPeer {
+        PeerActor::from_registry().do_send(NewPeer {
             participant_id: self.participant_id.clone(),
             name: self.name.clone(),
             addr: ctx.address(),

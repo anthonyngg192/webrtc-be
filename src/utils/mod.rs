@@ -1,11 +1,9 @@
 pub mod environment;
 pub mod generate;
 pub mod jwt_validation;
-pub mod proto_utils;
 pub mod result;
 pub mod serde_helpers;
 
 pub use environment::*;
 pub use jwt_validation::*;
-pub use proto_utils::*;
 pub use serde_helpers::*;

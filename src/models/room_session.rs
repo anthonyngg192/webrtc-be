@@ -34,9 +34,6 @@ pub struct RoomSession {
     pub plain_transport: Option<Arc<PlainTransport>>,
 }
 
-unsafe impl Send for RoomSession {}
-unsafe impl Sync for RoomSession {}
-
 #[derive(Clone)]
 pub struct MutedPeer {
     pub participant_id: ParticipantId,

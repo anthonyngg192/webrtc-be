@@ -2,7 +2,7 @@ use actix::{Addr, Message};
 use mediasoup::prelude::{DtlsParameters, MediaKind, ProducerId, RtpCapabilities, RtpParameters};
 use serde::{Deserialize, Serialize};
 
-use crate::{actors::chat::messages::NewMessageEvent, models::room_session::RoomSession};
+use crate::actors::{chat::messages::NewMessageEvent, room_session::actor::RoomActor};
 
 #[derive(Serialize, Deserialize, Debug)]
 #[serde(rename_all = "camelCase")]
@@ -75,7 +75,7 @@ pub struct SendMessage {
 #[derive(Message)]
 #[rtype(result = "()")]
 pub struct AssignRoom {
-    pub addr: Addr<RoomSession>,
+    pub addr: Addr<RoomActor>,
 }
 
 #[derive(Message)]

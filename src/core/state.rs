@@ -3,7 +3,7 @@ use std::sync::Arc;
 use actix::Addr;
 
 use crate::{
-    actors::chat::actor::Chat,
+    actors::chat::actor::ChatActor,
     adapters::redis_adapter::RedisAdapter,
     services::{
         auth_service::AuthService, conversation_service::ConversationService,
@@ -20,7 +20,7 @@ pub struct AppState {
     pub room_service: Arc<RoomService>,
     pub auth_service: Arc<AuthService>,
     pub user_service: Arc<UserService>,
-    pub chat_addr: Arc<Addr<Chat>>,
+    pub chat_addr: Arc<Addr<ChatActor>>,
 }
 
 impl AppState {
@@ -33,7 +33,7 @@ impl AppState {
         room_service: Arc<RoomService>,
         user_service: Arc<UserService>,
         auth_service: Arc<AuthService>,
-        chat_addr: Arc<Addr<Chat>>,
+        chat_addr: Arc<Addr<ChatActor>>,
     ) -> Self {
         Self {
             redis_client,

@@ -1,9 +1,21 @@
 use crate::services::peer_service::PeerService;
 use actix::{Actor, Context, Supervised, SystemService};
 
-impl Supervised for PeerService {}
-impl SystemService for PeerService {}
+pub struct PeerActor {
+    pub service: PeerService,
+}
 
-impl Actor for PeerService {
+impl Default for PeerActor {
+    fn default() -> Self {
+        Self {
+            service: PeerService::new(),
+        }
+    }
+}
+
+impl Supervised for PeerActor {}
+impl SystemService for PeerActor {}
+
+impl Actor for PeerActor {
     type Context = Context<Self>;
 }

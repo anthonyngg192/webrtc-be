@@ -1,8 +1,0 @@
-syntax ="proto3";
-
-package ErrorEvent;
-
-message ErrorEvent{
-    string event=1;
-    string message=2;
-}

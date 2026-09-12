@@ -1,15 +1,19 @@
 use crate::models::room_session::RoomSession;
-use actix::{Actor, AsyncContext, Context};
-use tokio::time::Duration;
+use actix::{Actor, Context};
 
-use super::messages::PrometheusPulling;
+pub struct RoomActor {
+    pub room: RoomSession,
+}
 
-impl Actor for RoomSession {
-    type Context = Context<Self>;
-
-    fn started(&mut self, ctx: &mut Self::Context) {
-        ctx.run_interval(Duration::from_secs(3), |_, context| {
-            context.address().do_send(PrometheusPulling {});
-        });
+impl RoomActor {
+    pub fn new(room: RoomSession) -> Self {
+        Self { room }
     }
 }
+
+impl Actor for RoomActor {
+    type Context = Context<Self>;
+}
+
+unsafe impl Send for RoomActor {}
+unsafe impl Sync for RoomActor {}

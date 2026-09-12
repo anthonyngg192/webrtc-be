@@ -1,7 +1,6 @@
 pub mod auth_service;
 pub mod conversation_service;
 pub mod message_service;
-pub mod metrics_service;
 pub mod peer_service;
 pub mod relation_service;
 pub mod room_service;

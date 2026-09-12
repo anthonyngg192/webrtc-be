@@ -3,11 +3,11 @@ use std::sync::Arc;
 use actix::Addr;
 use mediasoup::prelude::RtpCapabilities;
 
-use crate::actors::session::actor::Session;
+use crate::actors::{room_session::actor::RoomActor, session::actor::Session};
 
-use super::room_session::{RoomCode, RoomSession};
+use super::room_session::RoomCode;
 
-#[derive(Debug, Eq, PartialEq, Hash, Clone)]
+#[derive(Debug, Eq, PartialEq, Hash, Clone, Copy)]
 pub enum ParticipantType {
     User,
     Anonymous,
@@ -27,5 +27,5 @@ pub struct PeerSession {
     pub rtp_capabilities: Option<RtpCapabilities>,
     pub name: String,
     pub addr: Arc<Addr<Session>>,
-    pub room_addr: Option<Arc<Addr<RoomSession>>>,
+    pub room_addr: Option<Arc<Addr<RoomActor>>>,
 }

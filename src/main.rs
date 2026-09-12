@@ -27,7 +27,10 @@ async fn main() -> std::io::Result<()> {
     env_logger::init_from_env(env_logger::Env::new().default_filter_or("info"));
     env::set_var("RUST_LOG", "actix_web=debug,actix_server=debug");
 
-    log::info!("starting HTTP server at http://localhost:8000");
+    log::info!(
+        "starting HTTP server at http://localhost:{}",
+        API_PORT.to_string()
+    );
 
     let state = bootstrap().await;
     let arc_state = Arc::new(state);
@@ -42,7 +45,6 @@ async fn main() -> std::io::Result<()> {
             .configure(routes::room::router_config)
             .configure(routes::auth::router_config)
             .configure(routes::user::router_config)
-            .configure(routes::metrics::router_config)
             .wrap(
                 Cors::default()
                     //TODO: remove allow_any_origin when deployment

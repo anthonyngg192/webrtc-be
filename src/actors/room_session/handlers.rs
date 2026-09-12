@@ -1,27 +1,32 @@
 use super::messages::*;
 use crate::{
     actors::{
-        peer::messages::{GetPeerByUserCode, GetPeers, SendPeer},
+        peer::{
+            actor::PeerActor,
+            messages::{GetPeerByUserCode, GetPeers, SendPeer},
+        },
+        room_session::actor::RoomActor,
         session::messages::{AssignRoom, SendMessage},
     },
-    models::{peer_session::ParticipantId, room_session::RoomSession},
+    models::peer_session::ParticipantId,
     repositories::AbstractRoom,
-    services::{peer_service::PeerService, room_session_service::ActionResult},
+    services::room_session_service::ActionResult,
 };
 use actix::{AsyncContext, Handler, SystemService};
 use mediasoup::prelude::{Producer, ProducerId};
 use std::sync::Arc;
 
-impl Handler<PeerJoinRoomSession> for RoomSession {
+impl Handler<PeerJoinRoomSession> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: PeerJoinRoomSession, ctx: &mut Self::Context) -> Self::Result {
         let session = msg.session.clone();
         let peer = session.participant_id.clone();
-        self.peers
+        self.room
+            .peers
             .insert(peer.clone(), Arc::new(msg.peer_addr.clone()));
-        let rtp_capabilities = self.router.rtp_capabilities();
-        PeerService::from_registry().do_send(SendPeer {
+        let rtp_capabilities = self.room.router.rtp_capabilities();
+        PeerActor::from_registry().do_send(SendPeer {
             data: serde_json::to_vec(&JoinRoomRespond {
                 rtp_capabilities: rtp_capabilities.clone(),
                 event_name: "JoinRoomRespond".to_string(),
@@ -44,19 +49,19 @@ impl Handler<PeerJoinRoomSession> for RoomSession {
         });
 
         let user_code = peer.user_code.clone();
-        let service = self.service.clone();
-        let room_code = self.code.clone();
+        let service = self.room.service.clone();
+        let room_code = self.room.code.clone();
         actix::spawn(async move {
             service.db.peer_join_room(room_code.0, user_code).await;
         });
     }
 }
 
-impl Handler<PeerLeaveRoomSession> for RoomSession {
+impl Handler<PeerLeaveRoomSession> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: PeerLeaveRoomSession, ctx: &mut Self::Context) -> Self::Result {
-        self.peer_leave_room(msg.participant_id.clone());
+        self.room.peer_leave_room(msg.participant_id.clone());
         ctx.address().do_send(NewRoomMessage {
             text: Some(format!("{} leaved room", msg.name)),
             gif: None,
@@ -64,21 +69,21 @@ impl Handler<PeerLeaveRoomSession> for RoomSession {
             participant_id: None,
         });
         ctx.address().do_send(GetRoomInfo {});
-        let service = self.service.clone();
+        let service = self.room.service.clone();
         let user_code = msg.participant_id.user_code.clone();
-        let room_code = self.code.clone();
+        let room_code = self.room.code.clone();
         actix::spawn(async move {
             service.db.peer_leave_room(room_code.0, user_code).await;
         });
     }
 }
 
-impl Handler<CreateTransport> for RoomSession {
+impl Handler<CreateTransport> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: CreateTransport, ctx: &mut Self::Context) -> Self::Result {
         let participant = msg.participant.clone();
-        let mut room = self.clone();
+        let mut room = self.room.clone();
         let addr = ctx.address();
         actix::spawn(async move {
             let _ = room.new_transport(participant.clone(), addr.clone()).await;
@@ -87,11 +92,11 @@ impl Handler<CreateTransport> for RoomSession {
     }
 }
 
-impl Handler<ConnectConsumerTransport> for RoomSession {
+impl Handler<ConnectConsumerTransport> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: ConnectConsumerTransport, _: &mut Self::Context) -> Self::Result {
-        let room = self.clone();
+        let room = self.room.clone();
         let participant = msg.participant.clone();
         let dtls_parameters = msg.dtls_parameters.clone();
         actix::spawn(async move {
@@ -101,11 +106,11 @@ impl Handler<ConnectConsumerTransport> for RoomSession {
     }
 }
 
-impl Handler<ConnectProducerTransport> for RoomSession {
+impl Handler<ConnectProducerTransport> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: ConnectProducerTransport, _: &mut Self::Context) -> Self::Result {
-        let room = self.clone();
+        let room = self.room.clone();
         let participant = msg.participant.clone();
         let dtls_parameters = msg.dtls_parameters.clone();
         actix::spawn(async move {
@@ -115,11 +120,11 @@ impl Handler<ConnectProducerTransport> for RoomSession {
     }
 }
 
-impl Handler<CreateProducer> for RoomSession {
+impl Handler<CreateProducer> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: CreateProducer, ctx: &mut Self::Context) -> Self::Result {
-        let mut room = self.clone();
+        let mut room = self.room.clone();
         let participant = msg.participant.clone();
         let kind = msg.kind;
         let rtp_parameter = msg.rtp_parameter.clone();
@@ -144,11 +149,11 @@ impl Handler<CreateProducer> for RoomSession {
     }
 }
 
-impl Handler<CreateConsumer> for RoomSession {
+impl Handler<CreateConsumer> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: CreateConsumer, ctx: &mut Self::Context) -> Self::Result {
-        let mut room = self.clone();
+        let mut room = self.room.clone();
         let producer_id = msg.producer_id;
         let participant = msg.participant.clone();
         let client_rtp_capabilities = msg.rtp_capabilities.clone();
@@ -173,20 +178,12 @@ impl Handler<CreateConsumer> for RoomSession {
     }
 }
 
-impl Handler<GetRoom> for RoomSession {
-    type Result = Option<RoomSession>;
-
-    fn handle(&mut self, _: GetRoom, _: &mut Self::Context) -> Self::Result {
-        Some(self.clone())
-    }
-}
-
-impl Handler<MessageToPeersInRoom> for RoomSession {
+impl Handler<MessageToPeersInRoom> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: MessageToPeersInRoom, _: &mut Self::Context) -> Self::Result {
         let content = msg.message.into_bytes();
-        self.peers.iter().for_each(|peer| {
+        self.room.peers.iter().for_each(|peer| {
             peer.1.do_send(SendMessage {
                 content: content.clone(),
             });
@@ -194,28 +191,32 @@ impl Handler<MessageToPeersInRoom> for RoomSession {
     }
 }
 
-impl Handler<MessageToPeerInRoom> for RoomSession {
+impl Handler<MessageToPeerInRoom> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: MessageToPeerInRoom, _: &mut Self::Context) -> Self::Result {
-        let peer = self.peers.get(&msg.participant).unwrap();
+        let peer = self.room.peers.get(&msg.participant).unwrap();
         peer.do_send(SendMessage {
             content: msg.message.into_bytes(),
         });
     }
 }
 
-impl Handler<GetRoomInfo> for RoomSession {
+impl Handler<GetRoomInfo> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, _: GetRoomInfo, _: &mut Self::Context) -> Self::Result {
-        let participant_ids: Vec<ParticipantId> =
-            self.peers.iter().map(|entity| entity.0.clone()).collect();
-        let producers = self.producers.clone();
-        let peer_producers = self.peer_producers.clone();
-        let peers_addr = self.peers.clone();
+        let participant_ids: Vec<ParticipantId> = self
+            .room
+            .peers
+            .iter()
+            .map(|entity| entity.0.clone())
+            .collect();
+        let producers = self.room.producers.clone();
+        let peer_producers = self.room.peer_producers.clone();
+        let peers_addr = self.room.peers.clone();
         actix::spawn(async move {
-            let peers = PeerService::from_registry()
+            let peers = PeerActor::from_registry()
                 .send(GetPeers { participant_ids })
                 .await
                 .unwrap();
@@ -264,14 +265,16 @@ impl Handler<GetRoomInfo> for RoomSession {
     }
 }
 
-impl Handler<AddTransports> for RoomSession {
+impl Handler<AddTransports> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: AddTransports, ctx: &mut Self::Context) -> Self::Result {
-        self.producer_transports
+        self.room
+            .producer_transports
             .entry(msg.peer.clone())
             .or_insert(msg.producer_transport);
-        self.consumer_transports
+        self.room
+            .consumer_transports
             .entry(msg.peer.clone())
             .or_insert(msg.consumer_transport.clone());
 
@@ -279,39 +282,45 @@ impl Handler<AddTransports> for RoomSession {
     }
 }
 
-impl Handler<NewConsumer> for RoomSession {
+impl Handler<NewConsumer> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: NewConsumer, _: &mut Self::Context) -> Self::Result {
-        self.consumers
+        self.room
+            .consumers
             .entry(msg.peer.clone())
             .or_default()
             .insert(msg.consumer.id());
-        self.peer_consumers.insert(msg.consumer.id(), msg.consumer);
+        self.room
+            .peer_consumers
+            .insert(msg.consumer.id(), msg.consumer);
     }
 }
 
-impl Handler<NewProducer> for RoomSession {
+impl Handler<NewProducer> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: NewProducer, ctx: &mut Self::Context) -> Self::Result {
-        self.producers
+        self.room
+            .producers
             .entry(msg.peer.clone())
             .or_default()
             .insert(msg.producer.id());
-        self.peer_producers.insert(msg.producer.id(), msg.producer);
+        self.room
+            .peer_producers
+            .insert(msg.producer.id(), msg.producer);
         ctx.address().do_send(GetRoomInfo {});
     }
 }
 
-impl Handler<RoomPauserResumeProducer> for RoomSession {
+impl Handler<RoomPauserResumeProducer> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: RoomPauserResumeProducer, ctx: &mut Self::Context) -> Self::Result {
         let participant = msg.peer;
         let producer_id = msg.producer_id;
         let addr = ctx.address().clone();
-        let room = self.clone();
+        let room = self.room.clone();
         actix::spawn(async move {
             let result = room
                 .pause_or_resume_producer(participant, producer_id)
@@ -328,25 +337,25 @@ impl Handler<RoomPauserResumeProducer> for RoomSession {
     }
 }
 
-impl Handler<RoomCloseProducer> for RoomSession {
+impl Handler<RoomCloseProducer> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: RoomCloseProducer, ctx: &mut Self::Context) -> Self::Result {
-        let producers = self.producers.get_mut(&msg.peer);
+        let producers = self.room.producers.get_mut(&msg.peer);
         if let Some(producers) = producers {
             let is_owner_producer = producers.contains(&msg.producer_id);
             if !is_owner_producer {
                 log::error!("Producer invalid");
                 return;
             }
-            self.peer_producers.remove(&msg.producer_id);
+            self.room.peer_producers.remove(&msg.producer_id);
             producers.remove(&msg.producer_id);
             ctx.address().do_send(GetRoomInfo {});
         }
     }
 }
 
-impl Handler<NewRoomMessage> for RoomSession {
+impl Handler<NewRoomMessage> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: NewRoomMessage, _: &mut Self::Context) -> Self::Result {
@@ -357,7 +366,7 @@ impl Handler<NewRoomMessage> for RoomSession {
             r#type: msg.r#type,
         };
 
-        for (_, addr) in self.peers.clone() {
+        for (_, addr) in self.room.peers.clone() {
             addr.do_send(SendMessage {
                 content: serde_json::to_vec(&NewRoomMessageRespond {
                     data: data.clone(),
@@ -369,31 +378,31 @@ impl Handler<NewRoomMessage> for RoomSession {
     }
 }
 
-impl Handler<ClearPeerData> for RoomSession {
+impl Handler<ClearPeerData> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: ClearPeerData, _: &mut Self::Context) -> Self::Result {
-        self.peer_leave_room(msg.participant_id);
+        self.room.peer_leave_room(msg.participant_id);
     }
 }
 
 //TODO: Update into database
-impl Handler<BannedUserOutRoom> for RoomSession {
+impl Handler<BannedUserOutRoom> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: BannedUserOutRoom, ctx: &mut Self::Context) -> Self::Result {
         let addr = ctx.address().clone();
         let user_code = msg.user_code.clone();
-        if msg.participant_id.user_code != self.owner_code {
+        if msg.participant_id.user_code != self.room.owner_code {
             log::error!("Permission denied");
             return;
         }
 
-        let peers = self.peers.clone();
-        let service = self.service.clone();
-        let room_code = self.code.clone();
+        let peers = self.room.peers.clone();
+        let service = self.room.service.clone();
+        let room_code = self.room.code.clone();
         actix::spawn(async move {
-            let participant_id = PeerService::from_registry()
+            let participant_id = PeerActor::from_registry()
                 .send(GetPeerByUserCode {
                     user_code: user_code.clone(),
                 })
@@ -436,22 +445,11 @@ impl Handler<BannedUserOutRoom> for RoomSession {
     }
 }
 
-impl Handler<PrometheusPulling> for RoomSession {
-    type Result = ();
-
-    fn handle(&mut self, _: PrometheusPulling, _: &mut Self::Context) -> Self::Result {
-        let room = self.clone();
-        actix::spawn(async move {
-            room.room_metrics().await;
-        });
-    }
-}
-
-impl Handler<AddPlainTransport> for RoomSession {
+impl Handler<AddPlainTransport> for RoomActor {
     type Result = ();
 
     fn handle(&mut self, msg: AddPlainTransport, ctx: &mut Self::Context) -> Self::Result {
-        self.plain_transport = Some(msg.plain_trans);
+        self.room.plain_transport = Some(msg.plain_trans);
         ctx.address().do_send(GetRoomInfo {});
     }
 }

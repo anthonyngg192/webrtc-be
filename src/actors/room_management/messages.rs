@@ -1,5 +1,5 @@
 use crate::{
-    models::room_session::{RoomCode, RoomSession},
+    actors::room_session::actor::RoomActor, models::room_session::RoomCode,
     services::room_service::RoomService,
 };
 use actix::{Addr, Message};
@@ -23,11 +23,7 @@ pub struct RoomManagementCreateRoom {
 }
 
 #[derive(Message)]
-#[rtype(result = "Option<(Worker, Arc<WebRtcServer>)>")]
-pub struct GetWorker {}
-
-#[derive(Message)]
-#[rtype(result = "Option<Arc<Addr<RoomSession>>>")]
+#[rtype(result = "Option<Arc<Addr<RoomActor>>>")]
 pub struct GetRoomAddr {
     pub room_code: RoomCode,
 }
@@ -36,5 +32,5 @@ pub struct GetRoomAddr {
 #[rtype(result = "()")]
 pub struct NewRoom {
     pub room_code: RoomCode,
-    pub addr: Addr<RoomSession>,
+    pub addr: Addr<RoomActor>,
 }

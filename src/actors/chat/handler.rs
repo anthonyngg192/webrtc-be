@@ -1,20 +1,18 @@
 use crate::{
-    actors::peer::messages::{ErrorEventByUser, SendPeersByUser},
+    actors::peer::{
+        actor::PeerActor,
+        messages::{ErrorEventByUser, SendPeersByUser},
+    },
     models::message::NewMessage as NewMessageModel,
-    services::peer_service::PeerService,
 };
 
 use super::{
-    actor::Chat,
+    actor::ChatActor,
     messages::{NewMessage, NewMessageEventData, NewMessageRespond},
 };
 use actix::{Handler, SystemService};
 
-mod socket_event {
-    include!(concat!(env!("OUT_DIR"), "/socket_event.rs"));
-}
-
-impl Handler<NewMessage> for Chat {
+impl Handler<NewMessage> for ChatActor {
     type Result = ();
 
     fn handle(&mut self, msg: NewMessage, _: &mut Self::Context) {
@@ -38,14 +36,14 @@ impl Handler<NewMessage> for Chat {
 
                 match message {
                     Ok(new_message) => {
-                        PeerService::from_registry().do_send(SendPeersByUser {
+                        PeerActor::from_registry().do_send(SendPeersByUser {
                             user_codes: vec![other_user_code.clone(), msg.user_code.clone()],
                             data: serde_json::to_vec(&NewMessageRespond {
                                 event_name: "NewMessageRespond".to_string(),
                                 data: NewMessageEventData {
                                     conversation_id: msg.conversation_id.clone(),
-                                    content: msg.content.clone(),
-                                    gif: msg.gif.clone(),
+                                    content: msg.content,
+                                    gif: msg.gif,
                                     r#type: "Message".to_string(),
                                     direct_from: msg.user_code.clone(),
                                     id: new_message.id.to_string(),
@@ -59,13 +57,12 @@ impl Handler<NewMessage> for Chat {
                     }
                 };
             } else {
-                PeerService::from_registry().do_send(ErrorEventByUser {
+                PeerActor::from_registry().do_send(ErrorEventByUser {
                     data: "Conversation not found".to_string(),
-                    user_code: msg.user_code.clone(),
+                    user_code: msg.user_code,
                     event_name: "ErrorMessage".to_string(),
                 });
             }
-            other_user_code
         });
     }
 }

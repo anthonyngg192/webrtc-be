@@ -8,10 +8,6 @@ use std::{
     sync::Arc,
 };
 
-mod error_event {
-    include!(concat!(env!("OUT_DIR"), "/error_event.rs"));
-}
-
 pub struct PeerService {
     pub peers: HashMap<ParticipantId, PeerSession>,
     pub users: HashSet<String>,

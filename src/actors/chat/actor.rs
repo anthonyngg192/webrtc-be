@@ -4,23 +4,23 @@ use crate::services::{conversation_service::ConversationService, message_service
 use std::sync::Arc;
 
 #[derive(Clone)]
-pub struct Chat {
+pub struct ChatActor {
     pub conversation_service: Arc<ConversationService>,
     pub message_service: Arc<MessageService>,
 }
 
-impl Chat {
+impl ChatActor {
     pub fn new(
         conversation_service: Arc<ConversationService>,
         message_service: Arc<MessageService>,
     ) -> Self {
-        Chat {
+        ChatActor {
             conversation_service,
             message_service,
         }
     }
 }
 
-impl Actor for Chat {
+impl Actor for ChatActor {
     type Context = Context<Self>;
 }

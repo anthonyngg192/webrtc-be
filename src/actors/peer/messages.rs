@@ -1,10 +1,10 @@
 use std::sync::Arc;
 
 use crate::{
-    actors::session::actor::Session,
+    actors::{room_session::actor::RoomActor, session::actor::Session},
     models::{
         peer_session::{ParticipantId, PeerSession},
-        room_session::{RoomCode, RoomSession},
+        room_session::RoomCode,
     },
 };
 use actix::{Addr, Message};
@@ -34,7 +34,7 @@ pub struct PeerJoinRoom {
 pub struct JoinRoom {
     pub room_code: RoomCode,
     pub participant_id: ParticipantId,
-    pub room_addr: Arc<Addr<RoomSession>>,
+    pub room_addr: Arc<Addr<RoomActor>>,
 }
 
 #[derive(Message)]
@@ -69,14 +69,6 @@ pub struct SendPeerByUser {
 pub struct SendPeersByUser {
     pub user_codes: Vec<String>,
     pub data: Vec<u8>,
-}
-
-#[derive(Message)]
-#[rtype(result = "()")]
-pub struct ErrorEvent {
-    pub data: String,
-    pub participant_id: ParticipantId,
-    pub event_name: String,
 }
 
 #[derive(Message)]

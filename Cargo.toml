@@ -1,5 +1,5 @@
 [package]
-name = "rust-signaling"
+name = "be-webrtc"
 version = "0.1.0"
 edition = "2021"
 authors = ["anthony"]
@@ -60,9 +60,9 @@ prost-types = "0.11"
 # Kafka
 # rdkafka = "0.37.0"
 mediasoup = "0.18"
-prometheus = "0.13.4"
 tokio = "1.43.0"
-whisper-rs = "0.14.2"
+
+# audio
 opus = "0.3.0"
 rubato = "0.16.2"
 

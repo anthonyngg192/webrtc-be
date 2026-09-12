@@ -2,9 +2,9 @@ use std::{net::IpAddr, sync::Arc};
 
 use crate::{
     actors::{
-        chat::actor::Chat,
+        chat::actor::ChatActor,
         room_management::{
-            actors::RoomManager,
+            actors::RoomsActor,
             messages::{AddWorker, RoomManagementCreateRoom},
         },
     },
@@ -31,7 +31,7 @@ async fn preload_room_active(room_service: Arc<RoomService>) {
     let rooms = room_service.get_room_actives().await;
     for room in rooms {
         let room_code = RoomCode(room.code);
-        RoomManager::from_registry().do_send(RoomManagementCreateRoom {
+        RoomsActor::from_registry().do_send(RoomManagementCreateRoom {
             room_code,
             owner_code: room.owner_code,
             room_service: room_service.clone(),
@@ -89,7 +89,7 @@ async fn init_worker() {
                 .await
                 .unwrap();
 
-            RoomManager::from_registry().do_send(AddWorker {
+            RoomsActor::from_registry().do_send(AddWorker {
                 id: i,
                 worker,
                 webrtc_server,
@@ -103,15 +103,15 @@ pub async fn bootstrap() -> AppState {
     let redis_client = Arc::new(adapters::redis_adapter::RedisAdapter::new());
 
     let conversation_service = Arc::new(ConversationService::new(
-        Arc::clone(&client),
+        client.clone(),
         Arc::clone(&redis_client),
     ));
-    let message_service = Arc::new(MessageService::new(Arc::clone(&client)));
-    let relation_service = Arc::new(RelationService::new(Arc::clone(&client)));
-    let auth_service = Arc::new(AuthService::new(Arc::clone(&client)));
-    let room_service = Arc::new(RoomService::new(Arc::clone(&client), redis_client.clone()));
-    let user_service = Arc::new(UserService::new(Arc::clone(&client)));
-    let chat_addr = Chat::new(
+    let message_service = Arc::new(MessageService::new(client.clone()));
+    let relation_service = Arc::new(RelationService::new(client.clone()));
+    let auth_service = Arc::new(AuthService::new(client.clone()));
+    let room_service = Arc::new(RoomService::new(client.clone(), redis_client.clone()));
+    let user_service = Arc::new(UserService::new(client.clone()));
+    let chat_addr = ChatActor::new(
         Arc::clone(&conversation_service),
         Arc::clone(&message_service),
     )
