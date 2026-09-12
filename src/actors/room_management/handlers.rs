@@ -47,7 +47,7 @@ impl Handler<RoomManagementCreateRoom> for RoomsActor {
                 let webrtc_server = result_worker.1;
                 actix::spawn(async move {
                     let room_session = RoomSession::new(
-                        &worker.clone(),
+                        &worker,
                         webrtc_server.clone(),
                         room_code.clone(),
                         owner_code,

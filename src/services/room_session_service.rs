@@ -33,14 +33,7 @@ impl RoomSession {
         owner_code: String,
         service: Arc<RoomService>,
     ) -> Result<Self, String> {
-        Self::new_with_id(
-            &worker.clone(),
-            webrtc_server,
-            room_code,
-            owner_code,
-            service,
-        )
-        .await
+        Self::new_with_id(&worker, webrtc_server, room_code, owner_code, service).await
     }
 
     async fn new_with_id(
