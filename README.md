@@ -114,6 +114,125 @@ client -- TURN relay when required -----> mediasoup
 
 For deployment before TURN is added, `MEDIASOUP_ANNOUNCED_IP` must be reachable by clients and UDP ports `10000-10100` must be allowed through the firewall and NAT.
 
+## mediasoup pre-setup
+
+mediasoup has two separate parts in this example:
+
+- The backend uses the Rust `mediasoup` crate (`0.18.0`) and its native C++ worker.
+- The frontend uses `mediasoup-client` (`3.7.18`) in the browser.
+
+Do not install the Node.js `mediasoup` server package for this backend. Cargo builds the native worker used by the Rust crate. The first Rust build can take several minutes because `mediasoup-sys` compiles the bundled C++ worker and installs/downloads build-time dependencies.
+
+### Backend build prerequisites
+
+Install these before the first `cargo build` or `cargo run`:
+
+- A Rust toolchain with Cargo.
+- Python 3 with `pip` available as `python3` and `python3 -m pip`.
+- A C/C++ toolchain with C++17 support.
+- Internet access during the first build so Cargo, Python, and native worker dependencies can be resolved.
+
+On macOS, install the Xcode Command Line Tools:
+
+```bash
+xcode-select --install
+```
+
+On Debian or Ubuntu:
+
+```bash
+sudo apt update
+sudo apt install -y build-essential python3 python3-pip
+```
+
+Verify the required commands before building:
+
+```bash
+rustc --version
+cargo --version
+python3 --version
+python3 -m pip --version
+c++ --version
+```
+
+If Python 3 is installed under another command or path, provide it to the build explicitly:
+
+```bash
+PYTHON=/absolute/path/to/python3 cargo build
+```
+
+Then compile the backend once before starting the complete stack:
+
+```bash
+cargo check
+```
+
+The mediasoup worker is a native artifact inside Cargo's build output. A clean build, a new target directory, or a platform/architecture change can cause it to be compiled again.
+
+### Network pre-setup
+
+For a browser and backend running on the same machine, the example defaults are sufficient:
+
+```dotenv
+MEDIASOUP_LISTEN_IP=127.0.0.1
+MEDIASOUP_ANNOUNCED_IP=127.0.0.1
+RTC_MIN_PORT=10000
+RTC_MAX_PORT=10100
+```
+
+For LAN or public testing, the media listener and announced address have different roles:
+
+- `MEDIASOUP_LISTEN_IP` is the local interface on which the worker binds.
+- `MEDIASOUP_ANNOUNCED_IP` is the address placed in ICE candidates and must be reachable by browsers.
+
+A typical remote-host configuration is:
+
+```dotenv
+MEDIASOUP_LISTEN_IP=0.0.0.0
+MEDIASOUP_ANNOUNCED_IP=<public-or-LAN-IP>
+```
+
+Also make sure that:
+
+- UDP ports `10000-10100` are allowed by the host firewall, cloud firewall, and NAT/port-forwarding rules.
+- The announced address resolves or routes to the machine running mediasoup.
+- The HTTP/WebSocket API is reachable separately. The current Rust server binds its API to `127.0.0.1`, so remote use requires a reverse proxy or a code change to the bind address.
+- UDP port `10001` is not already in use if the sample plain RTP transport is enabled; the current implementation connects that transport to this hard-coded local port.
+
+The `RTC_MIN_PORT` and `RTC_MAX_PORT` variables document the intended range, but the current backend still configures `10000-10100` directly in `src/core/bootstrap.rs`.
+
+### Frontend pre-setup
+
+The browser side does not compile a mediasoup worker. It only needs the JavaScript client installed by the frontend workspace:
+
+```bash
+cd ../fe
+pnpm install
+```
+
+Set the frontend API and native WebSocket URLs:
+
+```dotenv
+VITE_API_HOST=http://127.0.0.1:8000
+VITE_API_WS=ws://127.0.0.1:8000
+```
+
+Camera, microphone, and screen capture require browser permission. Use `localhost` for local development; use HTTPS/WSS when testing from another host because browser media APIs require a secure context in normal deployments.
+
+This sample configures Opus for audio and VP8 for video. The browser must support a compatible codec, and the client `Device` must successfully load the router RTP capabilities before transports or producers are created.
+
+### Preflight checklist
+
+Before opening the demo UI, confirm that:
+
+1. `cargo check` completes and builds the mediasoup worker.
+2. MongoDB and Redis are healthy in `docker compose ps`.
+3. The backend is listening on port `8000`.
+4. The frontend points to the correct HTTP and WebSocket URLs.
+5. UDP `10000-10100` is reachable for non-local clients.
+6. The browser has permission to use the camera and microphone.
+7. Both test users join the same room code.
+
 ## Run the complete example
 
 ### 1. Start MongoDB and Redis
