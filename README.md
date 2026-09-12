@@ -4,19 +4,17 @@ This repository is a sample implementation of a multi-user WebRTC application. I
 
 It is intended as reference code for learning and experimentation, not as a reusable framework or a production-ready conferencing service.
 
-The companion frontend implementation is expected next to this repository at:
+Companion frontend: [anthonyngg192/webrtc-fe](https://github.com/anthonyngg192/webrtc-fe)
 
-```text
-../fe
-```
-
-The two repositories form one example application:
+The backend and frontend currently live in separate repositories, but together they form one sample application. A sibling checkout keeps the layout compatible with the planned combined project:
 
 ```text
 webrtc/
-├── be/  Rust API, WebSocket signalling, room actors, and mediasoup SFU
-└── fe/  React demo client using mediasoup-client
+├── be/  anthonyngg192/webrtc-be: Rust signalling server and mediasoup SFU
+└── fe/  anthonyngg192/webrtc-fe: React demo client using mediasoup-client
 ```
+
+The repositories may be consolidated later; until then, this README uses the sibling `../fe` path for local commands.
 
 ## What this example implements
 
@@ -35,11 +33,7 @@ The backend currently demonstrates:
 - MongoDB persistence for application data.
 - Redis caching for conversation lookups and short-lived data.
 
-The companion frontend is a real consumer of this protocol. Its mediasoup integration is implemented in:
-
-```text
-../fe/apps/forum-ui/src/socket-client/SocketBinary.ts
-```
+The companion frontend is a real consumer of this protocol. Its mediasoup integration is implemented in [`SocketBinary.ts`](https://github.com/anthonyngg192/webrtc-fe/blob/dev/apps/forum-ui/src/socket-client/SocketBinary.ts).
 
 The frontend uses React, Nx, Redux, and `mediasoup-client@3.7.18`. It includes room creation and joining, microphone/camera controls, screen sharing, remote media subscription, room chat, and moderation UI.
 
@@ -206,6 +200,8 @@ The `RTC_MIN_PORT` and `RTC_MAX_PORT` variables document the intended range, but
 The browser side does not compile a mediasoup worker. It only needs the JavaScript client installed by the frontend workspace:
 
 ```bash
+# Run from this backend repository. Skip clone if ../fe already exists.
+git clone https://github.com/anthonyngg192/webrtc-fe.git ../fe
 cd ../fe
 pnpm install
 ```
@@ -265,6 +261,8 @@ The backend starts at `http://127.0.0.1:8000`.
 In a second terminal:
 
 ```bash
+# Clone this first if ../fe does not exist:
+# git clone https://github.com/anthonyngg192/webrtc-fe.git ../fe
 cd ../fe
 cp apps/forum-ui/.env.sample apps/forum-ui/.env
 pnpm install
@@ -385,18 +383,11 @@ src/
 └── adapters/redis_adapter.rs        Redis access
 ```
 
-Companion frontend paths:
+Companion frontend source:
 
-```text
-../fe/apps/forum-ui/src/socket-client/SocketBinary.ts
-    WebSocket and mediasoup-client implementation
-
-../fe/apps/forum-ui/src/pages/room/
-    Room UI, local media controls, and remote participants
-
-../fe/apps/forum-ui/src/store/room/
-    Room state and REST actions
-```
+- [`SocketBinary.ts`](https://github.com/anthonyngg192/webrtc-fe/blob/dev/apps/forum-ui/src/socket-client/SocketBinary.ts): WebSocket and mediasoup-client implementation.
+- [`pages/room`](https://github.com/anthonyngg192/webrtc-fe/tree/dev/apps/forum-ui/src/pages/room): room UI, local media controls, and remote participants.
+- [`store/room`](https://github.com/anthonyngg192/webrtc-fe/tree/dev/apps/forum-ui/src/store/room): room state and REST actions.
 
 ## Current limitations and next steps
 
